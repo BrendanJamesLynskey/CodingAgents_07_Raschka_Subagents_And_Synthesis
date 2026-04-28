@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodingAgents 07 &mdash; Subagents &amp; Synthesis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a; --bg-card: #0d1117; --bg-code: #161b22;
+            --text-primary: #e6edf3; --text-secondary: #8b949e;
+            --accent: #76B900; --accent-dim: #76B90044; --accent-glow: #76B90033;
+            --warm: #ffa657; --warm-dim: rgba(255,166,87,0.14);
+            --bad:  #ff7b72;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-primary); color: var(--text-primary);
+               font-family: var(--font-body); font-size: 17px; line-height: 1.7;
+               overflow-x: hidden; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column;
+                justify-content: center; align-items: center;
+                padding: 2rem 1.5rem; text-align: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 50%;
+                        transform: translateX(-50%); width: 600px; height: 600px;
+                        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+                        pointer-events: none; z-index: 0; }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label { font-family: var(--font-mono); font-size: 0.85rem;
+                        color: var(--accent); letter-spacing: 0.15em;
+                        text-transform: uppercase; margin-bottom: 1rem; }
+        .hero h1 { font-family: var(--font-display);
+                   font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
+                   color: var(--text-primary); line-height: 1.2; margin-bottom: 1rem; }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle { font-size: 1.1rem; color: var(--text-secondary);
+                          max-width: 720px; margin-bottom: 2rem; }
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem;
+                justify-content: center; margin-bottom: 2.5rem; }
+        .tag { font-family: var(--font-mono); font-size: 0.75rem;
+               padding: 0.25rem 0.75rem; border-radius: 999px;
+               border: 1px solid var(--accent); color: var(--accent);
+               background: var(--accent-dim); white-space: nowrap; }
+        .pipeline { display: flex; flex-wrap: wrap; align-items: center;
+                    justify-content: center; gap: 0.25rem; margin-bottom: 1rem;
+                    max-width: var(--max-width); }
+        .pipeline-step { font-family: var(--font-mono); font-size: 0.7rem;
+                         padding: 0.3rem 0.7rem; background: var(--bg-card);
+                         border: 1px solid var(--border); border-radius: 4px;
+                         color: var(--text-secondary); white-space: nowrap; }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide { min-height: 100vh; max-width: var(--max-width);
+                 margin: 0 auto; padding: 4rem 1.5rem; position: relative;
+                 display: flex; flex-direction: column; justify-content: center; }
+        .slide-number { font-family: var(--font-display); font-size: 5rem;
+                        font-weight: 700; color: var(--accent-dim);
+                        position: absolute; top: 2rem; right: 1.5rem;
+                        line-height: 1; user-select: none; }
+        .slide h2 { font-family: var(--font-display); font-size: 1.9rem;
+                    font-weight: 700; color: var(--accent); margin-bottom: 1.5rem;
+                    line-height: 1.25; }
+        .slide h3 { font-family: var(--font-display); font-size: 1.3rem;
+                    font-weight: 600; color: var(--text-primary);
+                    margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem;
+                               color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code { font-family: var(--font-mono); font-size: 0.88em;
+                      background: var(--bg-code); border: 1px solid var(--border);
+                      padding: 0.05rem 0.35rem; border-radius: 3px; color: #c9d1d9; }
+        .code-block { background: var(--bg-code); border: 1px solid var(--border);
+                      border-radius: 8px; margin: 1.25rem 0; overflow: hidden; }
+        .code-header { font-family: var(--font-mono); font-size: 0.75rem;
+                       color: var(--accent); background: rgba(118, 185, 0, 0.08);
+                       padding: 0.4rem 1rem; border-bottom: 1px solid var(--border); }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code { font-family: var(--font-mono); font-size: 0.85rem;
+                           line-height: 1.6; color: #c9d1d9; background: transparent;
+                           border: none; padding: 0; }
+        .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; } .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .table-wrap { overflow-x: auto; margin: 1.25rem 0; border-radius: 8px;
+                      border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: var(--bg-code); color: var(--accent); font-weight: 600;
+             text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+             font-family: var(--font-display); white-space: nowrap; }
+        td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border);
+             color: var(--text-secondary); }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-vertical { display: flex; flex-direction: column; align-items: center;
+                            gap: 0.3rem; margin: 1.5rem 0; padding: 1.5rem;
+                            background: var(--bg-card); border: 1px solid var(--border);
+                            border-radius: 8px; }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-box { font-family: var(--font-mono); font-size: 0.85rem;
+                       padding: 0.5rem 1rem; background: var(--bg-code);
+                       border: 1px solid var(--border); border-radius: 6px;
+                       color: var(--text-primary); text-align: center; white-space: nowrap; }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent);
+                              background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid { display: grid; gap: 0.75rem; margin: 1.5rem 0;
+                        padding: 1.5rem; background: var(--bg-card);
+                        border: 1px solid var(--border); border-radius: 8px; }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel { padding: 1rem; background: var(--bg-code);
+                         border: 1px solid var(--border); border-radius: 6px; }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel.warn-border   { border-left: 3px solid var(--warm); }
+        .diagram-panel.bad-border    { border-left: 3px solid var(--bad); }
+        .diagram-panel h4 { font-family: var(--font-display); font-size: 1rem;
+                            color: var(--accent); margin-bottom: 0.5rem; }
+        .diagram-panel.warn-border h4 { color: var(--warm); }
+        .diagram-panel.bad-border h4  { color: var(--bad); }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent);
+                   border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label { font-family: var(--font-mono); font-size: 0.75rem;
+                                  color: var(--accent); text-transform: uppercase;
+                                  letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li { counter-increment: contents; padding: 0.6rem 0;
+                            border-bottom: 1px solid var(--border);
+                            display: flex; align-items: center; gap: 1rem; }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before { content: counter(contents, decimal-leading-zero);
+                                    font-family: var(--font-mono); font-size: 0.85rem;
+                                    color: var(--accent); min-width: 2rem; }
+        .contents-list a { color: var(--text-primary); text-decoration: none;
+                           transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer { text-align: center; padding: 3rem 1.5rem;
+                  color: var(--text-secondary); font-size: 0.85rem;
+                  border-top: 1px solid var(--border); max-width: var(--max-width);
+                  margin: 0 auto; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .canvas-wrap { background: var(--bg-card); border: 1px solid var(--border);
+                       border-radius: 8px; padding: 1rem; margin: 1.25rem 0;
+                       overflow-x: auto; }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto;
+                                                 max-width: 100%; }
+        .ref-link { display: inline-block; padding: 0.4rem 0.8rem;
+                    border: 1px solid var(--accent); color: var(--accent);
+                    border-radius: 4px; text-decoration: none;
+                    font-family: var(--font-mono); font-size: 0.8rem; }
+
+        /* Subagent tree */
+        .tree-card { background: var(--bg-card); border: 1px solid var(--border);
+                     border-left: 3px solid var(--accent); border-radius: 8px;
+                     padding: 1.25rem; margin: 1.25rem 0; }
+        .tree-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+        .tree-buttons button { padding: 0.45rem 0.85rem; font-family: var(--font-mono); font-size: 0.78rem;
+                               border-radius: 4px; cursor: pointer; transition: opacity 0.15s;
+                               background: var(--bg-code); color: var(--text-primary);
+                               border: 1px solid var(--border); }
+        .tree-buttons button:hover { opacity: 0.85; }
+        .tree-buttons button.active { border-color: var(--accent); color: var(--accent); background: rgba(118,185,0,0.10); }
+        .tree-detail { padding: 0.85rem; background: var(--bg-code);
+                       border: 1px solid var(--border); border-radius: 6px;
+                       font-size: 0.88rem; color: var(--text-secondary);
+                       min-height: 4rem; }
+
+        /* Six-component synthesis grid */
+        .syn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+                    margin: 1.5rem 0; }
+        .syn-tile { padding: 1rem; background: var(--bg-card);
+                    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+                    border-radius: 6px; }
+        .syn-tile .ix { font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); }
+        .syn-tile h4 { font-family: var(--font-display); font-size: 0.95rem;
+                       color: var(--text-primary); margin: 0.2rem 0 0.4rem; }
+        .syn-tile p  { font-size: 0.78rem; color: var(--text-secondary); margin: 0; }
+
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3, .syn-grid { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">Coding Agents Internals Series &mdash; Presentation 07</div>
+    <h1>Bounded Subagents &amp; <span class="accent">Synthesis</span></h1>
+    <p class="subtitle">Companion deck for Component&nbsp;6 of Sebastian Raschka&rsquo;s essay, plus a closing synthesis tying all six components together. Why delegating to a child agent is harder than spawning one, and what good harness design looks like once everything is on the table.</p>
+    <div class="tags">
+        <span class="tag">Subagents</span>
+        <span class="tag">Binding</span>
+        <span class="tag">Sandboxing</span>
+        <span class="tag">Recursion depth</span>
+        <span class="tag">Claude Code</span>
+        <span class="tag">Codex</span>
+        <span class="tag">Synthesis</span>
+    </div>
+    <div class="pipeline">
+        <span class="pipeline-step">Main agent</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Decide to delegate</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Bind subagent</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Sandboxed run</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Return summary</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Resume parent</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We&rsquo;ll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Why Delegate at All?</a></li>
+        <li><a href="#slide-02">Spawn vs Bind &mdash; The Distinction That Matters</a></li>
+        <li><a href="#slide-03">What Context Crosses the Boundary</a></li>
+        <li><a href="#slide-04">Sandboxing &amp; Recursion Depth</a></li>
+        <li><a href="#slide-05">Claude Code vs Codex CLI &mdash; Two Subagent Models</a></li>
+        <li><a href="#slide-06">A Pattern Catalogue You Can Steal</a></li>
+        <li><a href="#slide-07">Interactive: The Subagent Tree</a></li>
+        <li><a href="#slide-08">Synthesis &mdash; All Six Components Together</a></li>
+        <li><a href="#slide-09">Reading List &amp; Where to Go Next</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Why Delegate at All?</h2>
+    <p>Most coding tasks fit in a single agent loop. The interesting ones don&rsquo;t. Three failure modes push designers towards subagents:</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Context overflow</h4>
+            <p>The task is genuinely big &mdash; touch 30 files, read 50 test failures, follow a multi-hop dependency chain. Even with aggressive compaction (deck&nbsp;06) the parent agent runs out of room. Delegation hands off pieces with their own context budget.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Side questions</h4>
+            <p>Mid-task, the agent needs to know &ldquo;what configures the test database?&rdquo;. Reading config files takes 6 turns and 4&nbsp;000 tokens, after which the parent is back where it started but with a polluted context. A subagent answers in one summary line.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Parallelisable work</h4>
+            <p>Three files need the same kind of edit; tests need to run while a build runs. A parent + N subagents run in parallel, each on a fast independent chain, then the parent integrates results.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Raschka&rsquo;s framing</div>
+        <p>The article phrases the goal as: <em>&ldquo;parallelize certain work into subtasks via subagents and speed up the main task&rdquo;</em>. The two words doing the most work in that sentence are &ldquo;<em>certain</em>&rdquo; and &ldquo;<em>bounded</em>&rdquo;. Subagents are not a generic decomposition tool; they are a targeted lever for specific patterns the harness recognises.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Spawn vs Bind &mdash; The Distinction That Matters</h2>
+    <p>The article makes a sharp point: <em>&ldquo;not just how to spawn a subagent but also how to bind one&rdquo;</em>. <strong>Spawning</strong> is the easy part: instantiate a child agent with a fresh context. <strong>Binding</strong> is the hard part: decide what context, tools, approval policy, sandbox, and budget the child gets &mdash; and what flows back.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 280" width="720" height="280" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .par   { fill: rgba(118,185,0,0.10); stroke: #76B900; stroke-width: 2; }
+                .ch    { fill: #0d1117; stroke: #76B900; stroke-width: 1.5; }
+                .lbl   { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
+                .lblc  { fill: #76B900; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
+                .sub   { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+                .arr   { stroke: #76B900; stroke-width: 2; fill: none; marker-end: url(#a2); }
+                .arr-r { stroke: #ffa657; stroke-width: 2; fill: none; marker-end: url(#a3); stroke-dasharray: 5 4; }
+            </style>
+            <defs>
+                <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                </marker>
+                <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffa657"/>
+                </marker>
+            </defs>
+
+            <rect class="par" x="40"  y="30" width="280" height="220" rx="8"/>
+            <text class="lblc" x="180" y="58" text-anchor="middle">Parent agent</text>
+            <text class="sub" x="180" y="80"  text-anchor="middle">full context, tools, memory</text>
+            <text class="sub" x="180" y="98"  text-anchor="middle">approval policy = confirm-novel</text>
+            <text class="sub" x="180" y="116" text-anchor="middle">recursion depth = 0</text>
+            <text class="sub" x="180" y="134" text-anchor="middle">turn budget = 60</text>
+
+            <rect class="ch" x="400" y="40" width="280" height="100" rx="8"/>
+            <text class="lblc" x="540" y="62" text-anchor="middle">Subagent (research)</text>
+            <text class="sub" x="540" y="82" text-anchor="middle">read-only tools &middot; no shell &middot; no write</text>
+            <text class="sub" x="540" y="100" text-anchor="middle">scoped task: &ldquo;find auth config&rdquo;</text>
+            <text class="sub" x="540" y="118" text-anchor="middle">depth = 1, budget = 8 turns</text>
+
+            <rect class="ch" x="400" y="160" width="280" height="100" rx="8"/>
+            <text class="lblc" x="540" y="182" text-anchor="middle">Subagent (parallel-edit)</text>
+            <text class="sub" x="540" y="202" text-anchor="middle">scoped to <code>src/handlers/*.py</code></text>
+            <text class="sub" x="540" y="220" text-anchor="middle">approval inherits from parent</text>
+            <text class="sub" x="540" y="238" text-anchor="middle">depth = 1, budget = 12 turns</text>
+
+            <path class="arr"   d="M 320 90  L 400 80"/>
+            <path class="arr-r" d="M 400 130 Q 360 130 320 110"/>
+            <text class="sub" x="362" y="76" text-anchor="middle">bind</text>
+            <text class="sub" x="365" y="142" text-anchor="middle" fill="#ffa657">summary back</text>
+
+            <path class="arr"   d="M 320 200 L 400 190"/>
+            <path class="arr-r" d="M 400 240 Q 360 240 320 220"/>
+        </svg>
+    </div>
+
+    <h3>What &ldquo;binding&rdquo; encompasses</h3>
+    <ul>
+        <li><strong>Inputs</strong> &mdash; what context (workspace summary, working memory, specific files) is copied into the child.</li>
+        <li><strong>Tool surface</strong> &mdash; which tools the child may call. Often a strict subset of the parent&rsquo;s.</li>
+        <li><strong>Approval policy</strong> &mdash; usually inherited; sometimes tightened for autonomous subagents.</li>
+        <li><strong>Sandbox</strong> &mdash; the child may share the parent&rsquo;s sandbox or get a fresh one.</li>
+        <li><strong>Budget</strong> &mdash; turn limit, token limit, wall-clock limit.</li>
+        <li><strong>Outputs</strong> &mdash; what comes back (one summary string? structured result? files written?).</li>
+        <li><strong>Recursion depth</strong> &mdash; can this child spawn its own children? How many levels deep?</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Why &ldquo;bind&rdquo; matters more than &ldquo;spawn&rdquo;</div>
+        <p>A poorly-bound subagent is worse than no subagent. It either re-does work the parent already did (because too little context flowed in), or it explodes the system&rsquo;s effective context (because too much flowed back), or it inherits write tools it didn&rsquo;t need and corrupts state. The &ldquo;spawn&rdquo; API is one line of code. The binding policy is the design.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>What Context Crosses the Boundary</h2>
+    <p>Two questions to answer for any subagent type: <em>what flows in?</em> and <em>what flows out?</em></p>
+
+    <h3>Inbound &mdash; what the child sees</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Context layer</th><th>Typical inheritance</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>Workspace summary</td><td>Always inherited</td><td>The child needs the same project context the parent used.</td></tr>
+                <tr><td>Tool definitions</td><td>Subset, not all</td><td>Read-only subagents shouldn&rsquo;t have <code>write_file</code> in their schema at all.</td></tr>
+                <tr><td>Working memory</td><td>Snapshot at spawn time</td><td>The child uses it; doesn&rsquo;t modify the parent&rsquo;s.</td></tr>
+                <tr><td>Compact transcript</td><td>Usually <em>not</em> inherited</td><td>The child gets a focused task spec instead. Parent transcript is noise.</td></tr>
+                <tr><td>Task spec</td><td>Always</td><td>The single most important input: a one- to three-paragraph brief on what this child is for.</td></tr>
+                <tr><td>Approval policy</td><td>Inherited or tightened</td><td>Never relaxed below the parent&rsquo;s; can be stricter (e.g., read-only).</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Outbound &mdash; what comes back</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>The summary contract</h4>
+            <p>By far the most common return shape: a single string of 100&ndash;500 tokens. The child does many turns of work; the parent sees the result, not the work. This <em>compresses</em> rather than <em>expands</em> the parent&rsquo;s context &mdash; the entire point of delegation.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Structured artefacts</h4>
+            <p>Some subagents return more: a list of file paths, a JSON structure, a diff. Always schema this so the parent isn&rsquo;t parsing free text. If the child wrote files, the side-effect <em>is</em> the result; the return value is just &ldquo;done, here&rsquo;s a summary&rdquo;.</p>
+        </div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">A subagent invocation contract</div>
+<pre><code>{
+  <span class="str">"name"</span>: <span class="str">"spawn_subagent"</span>,
+  <span class="str">"args"</span>: {
+    <span class="str">"role"</span>: <span class="str">"research"</span>,                            <span class="cm"># selects bind profile</span>
+    <span class="str">"task"</span>: <span class="str">"Identify which file configures the test database fixture, "</span>
+            <span class="str">"and report its key options. Do not modify any files."</span>,
+    <span class="str">"important_files"</span>: [<span class="str">"tests/conftest.py"</span>],          <span class="cm"># inbound hint</span>
+    <span class="str">"max_turns"</span>: <span class="num">8</span>,                                  <span class="cm"># budget</span>
+    <span class="str">"return_schema"</span>: {
+      <span class="str">"type"</span>: <span class="str">"object"</span>,
+      <span class="str">"properties"</span>: {
+        <span class="str">"file"</span>:    {<span class="str">"type"</span>: <span class="str">"string"</span>},
+        <span class="str">"options"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>},
+        <span class="str">"summary"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>, <span class="str">"maxLength"</span>: <span class="num">500</span>}
+      },
+      <span class="str">"required"</span>: [<span class="str">"file"</span>, <span class="str">"summary"</span>]
+    }
+  }
+}</code></pre>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Sandboxing &amp; Recursion Depth</h2>
+    <p>Two safety properties harnesses get wrong if they aren&rsquo;t designed in from the start.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Sandbox inheritance</h4>
+            <p>If the parent runs in a Docker container or Git worktree, the child inherits the same sandbox by default. This is what Codex does explicitly: <em>&ldquo;subagents inherit sandbox and approval setup&rdquo;</em>. The child cannot widen the sandbox; the harness wires it that way.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Recursion depth</h4>
+            <p>Set a hard limit. Even depth 2 is unusual; depth 3+ is almost always a sign that the design is wrong (or the model is confused). A simple counter on the spawn tool prevents accidental fork-bombs.</p>
+        </div>
+    </div>
+
+    <div class="diagram-vertical">
+        <div class="diagram-box accent">depth=0 &mdash; main user-facing agent (turn budget 60, full tool surface)</div>
+        <div class="diagram-arrow">&darr;&nbsp;spawn</div>
+        <div class="diagram-box">depth=1 &mdash; e.g. research subagent (turn budget 8, read-only)</div>
+        <div class="diagram-arrow">&darr;&nbsp;spawn</div>
+        <div class="diagram-box" style="opacity:0.7;">depth=2 &mdash; rarely needed; sometimes for nested file-search</div>
+        <div class="diagram-arrow" style="opacity:0.4;">&darr;&nbsp;blocked</div>
+        <div class="diagram-box" style="opacity:0.4; border-color:var(--bad); color:var(--bad);">depth=3 &mdash; HARD STOP. Spawn tool refuses with error.</div>
+    </div>
+
+    <h3>Why bound depth aggressively</h3>
+    <ul>
+        <li><strong>Cost</strong> &mdash; each level multiplies token usage by the spawn fan-out.</li>
+        <li><strong>Latency</strong> &mdash; deep trees serialise badly even when each branch is fast.</li>
+        <li><strong>Comprehension</strong> &mdash; debugging an 8-level deep agent failure is genuinely difficult.</li>
+        <li><strong>Failure modes compound</strong> &mdash; a lossy summary from a depth-3 agent reaching the root is often unrecognisable.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Token budgets cascade</div>
+        <p>If the depth-0 agent has 60 turns total, depth-1 children should each have a small fraction (say 8&ndash;12). The parent must afford to spawn several without going over its own budget. Concrete rule: child max-turns <strong>&le;</strong> (parent remaining turns) / (expected fan-out + 2). If the parent doesn&rsquo;t have the budget, it shouldn&rsquo;t spawn.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Claude Code vs Codex CLI &mdash; Two Subagent Models</h2>
+    <p>Raschka contrasts the two tools the article centres on. Both expose subagents, but the design choices differ in instructive ways.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Property</th><th>Claude Code</th><th>Codex CLI</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Subagent maturity</td>
+                    <td>Long-standing &mdash; the <code>Agent</code> / <code>Task</code> tool is part of the harness from early on</td>
+                    <td>Added more recently &mdash; subagent support layered on top of an established CLI</td>
+                </tr>
+                <tr>
+                    <td>Default scope</td>
+                    <td>Read-only by default; specialised agent types unlock specific writes</td>
+                    <td>Often not read-only; subagents can write within the sandbox</td>
+                </tr>
+                <tr>
+                    <td>Inheritance</td>
+                    <td>Inherits workspace context; gets a focused task spec; isolated transcript</td>
+                    <td>Inherits sandbox <em>and</em> approval setup; integration is closer to the parent</td>
+                </tr>
+                <tr>
+                    <td>Concurrency model</td>
+                    <td>Designed for parallel spawn (multiple agents at once)</td>
+                    <td>Typically serial &mdash; one subagent at a time</td>
+                </tr>
+                <tr>
+                    <td>Configuration surface</td>
+                    <td>Custom agent types via Markdown definitions; declarative</td>
+                    <td>Codex configuration files / flags; closer to programmatic</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Claude Code &mdash; many small read-only specialists</h4>
+            <p>The pattern this encourages: spawn a research subagent for a side question, an Explore subagent to map an unfamiliar area, a code-reviewer for a second opinion. Each child is cheap, scoped, and parallel-safe. The parent integrates summaries.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Codex CLI &mdash; deeper, more autonomous children</h4>
+            <p>The pattern this encourages: hand off a self-contained slice of the task to a child that runs longer and may write within its sandbox. Parent gets the resulting branch state, not just a summary. Closer to a multi-process model than a multi-thread one.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Neither is &ldquo;right&rdquo;</div>
+        <p>The two designs reflect different bets about how teams use coding agents. Claude Code optimises for an interactive collaborator that asks for help mid-task; Codex CLI optimises for handing off bounded chunks of autonomous work. Treat them as different tools for different jobs, not as the same idea expressed differently.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>A Pattern Catalogue You Can Steal</h2>
+    <p>Five subagent patterns that recur across well-designed harnesses. Each one is a specific bind profile &mdash; not a generic &ldquo;spawn an agent and hope&rdquo;.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Pattern A &mdash; research / side-question</h4>
+            <p>Read-only tools, 5&ndash;10 turn budget, returns a 200-token summary. Used when the parent needs a fact (&ldquo;which file configures X?&rdquo;) without polluting its own context. Safe, cheap, parallel-friendly.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Pattern B &mdash; parallel-edit fan-out</h4>
+            <p>One child per file (or per directory), each with write access scoped to its target. Same task description for all (&ldquo;rename <code>FooBar</code> to <code>BarFoo</code>&rdquo;). Parent integrates by checking each returned diff.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Pattern C &mdash; second-opinion review</h4>
+            <p>A reviewer subagent receives a diff and produces a structured critique. No write tools. Often invoked after the parent thinks it&rsquo;s done; the parent revises based on findings.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Pattern D &mdash; long-running autonomous slice</h4>
+            <p>Codex-style. The parent hands off a contained task (&ldquo;migrate this module to async&rdquo;) to a child with full tool access in a fresh worktree. The child runs to completion; parent sees the resulting branch.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Pattern E &mdash; planner / executor split</h4>
+            <p>A reasoning-model planner produces a step-by-step plan; non-reasoning executor children run each step. Cheap fast model executes; expensive thinking model only plans. A tiered architecture.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Pattern F &mdash; the anti-pattern</h4>
+            <p><em>Just spawn another agent and tell it to figure it out.</em> No bind profile, no scoped task, no return contract. This is the failure mode &mdash; and unfortunately the easiest mistake to make. Always design the binding before you write the spawn call.</p>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Interactive: The Subagent Tree</h2>
+    <p>Each pattern produces a different shape of agent tree. Pick a pattern below to see how the parent hands off, what binding looks like, and how results merge back.</p>
+
+    <div class="tree-card">
+        <div class="tree-buttons">
+            <button data-pat="A" class="active">A &mdash; research</button>
+            <button data-pat="B">B &mdash; parallel-edit</button>
+            <button data-pat="C">C &mdash; review</button>
+            <button data-pat="D">D &mdash; autonomous slice</button>
+            <button data-pat="E">E &mdash; planner/executor</button>
+        </div>
+
+        <div class="canvas-wrap" style="margin: 0;">
+            <svg id="treeSvg" viewBox="0 0 720 280" width="720" height="280" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    .tnode { fill: #0d1117; stroke: #76B900; stroke-width: 1.5; }
+                    .tnode.par { fill: rgba(118,185,0,0.10); stroke-width: 2; }
+                    .tnode.ch  { stroke: #76B900; }
+                    .tnode.dim { stroke: #21262d; opacity: 0.4; }
+                    .tlbl  { fill: #76B900; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; }
+                    .tsub  { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+                    .tarr  { stroke: #76B900; stroke-width: 1.5; fill: none; marker-end: url(#a4); }
+                </style>
+                <defs>
+                    <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                    </marker>
+                </defs>
+                <g id="treeGroup"></g>
+            </svg>
+        </div>
+
+        <div class="tree-detail" id="treeDetail">&hellip;</div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">What to notice</div>
+        <p>The tree shape is not a free parameter &mdash; it is determined by the <em>kind</em> of work. Research is one-deep, narrow. Parallel-edit is one-deep, wide. Autonomous slice is one-deep but each child is heavyweight. Planner/executor adds a planning hop. When you find yourself drawing a different shape, it usually corresponds to a different pattern.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Synthesis &mdash; All Six Components Together</h2>
+    <p>One last pass over Raschka&rsquo;s framework, with a single sentence per component capturing what we&rsquo;ve learned across the series. Read it as a checklist for any harness you build or evaluate.</p>
+
+    <div class="syn-grid">
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 01</div>
+            <h4>Live Repo Context</h4>
+            <p>Build a stable, cheap workspace summary (layout + commands + conventions) so the agent inherits what a colleague would already know.</p>
+        </div>
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 02</div>
+            <h4>Prompt Shape &amp; Cache</h4>
+            <p>Sort the prompt by stability and put a cache breakpoint after the last stable layer; pay full price only for what genuinely changed this turn.</p>
+        </div>
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 03</div>
+            <h4>Tool Access</h4>
+            <p>Replace prose suggestions with named, schema-checked actions; gate them with the four validation questions and a clear approval UX.</p>
+        </div>
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 04</div>
+            <h4>Context Bloat</h4>
+            <p>Clip individual tool outputs, dedupe repeated reads, summarise old turns with recency weighting; treat &ldquo;what the model sees&rdquo; as a budget.</p>
+        </div>
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 05</div>
+            <h4>Session Memory</h4>
+            <p>Maintain a small structured working memory (task, files, decisions, next) on disk that survives compaction and carries across turns.</p>
+        </div>
+        <div class="syn-tile">
+            <div class="ix">COMPONENT 06</div>
+            <h4>Subagents</h4>
+            <p>Delegate side questions and parallel slices to bounded children; the spawn API is one line, the binding policy is the entire design.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">A useful test for any harness</div>
+        <p>Pick the agent tool you use most. Write down what it does for each of the six components. Where it&rsquo;s strong and where it&rsquo;s weak should jump out. Now do the same for a harness you&rsquo;d build &mdash; and notice which component you have the least concrete answer for. That is, almost always, where to start.</p>
+    </div>
+
+    <h3>The deeper claim, restated</h3>
+    <p>Raschka&rsquo;s essay is, in the end, a quiet reframing of where the engineering is happening in modern LLM applications. The model is the engine, but the engine is also a commodity that improves on its own quarterly schedule. <strong>The harness is the durable artefact.</strong> The choices made about context, tools, memory, and delegation outlast any specific model version. Building good harnesses is the new applied software engineering of LLM systems &mdash; and the article is the clearest map I&rsquo;ve seen of that territory.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Reading List &amp; Where to Go Next</h2>
+
+    <h3>The article itself</h3>
+    <ul>
+        <li>Sebastian Raschka, &ldquo;<a href="https://magazine.sebastianraschka.com/p/components-of-a-coding-agent" target="_blank" rel="noopener">Components of a Coding Agent</a>&rdquo;. Read it through once, then again with this series open.</li>
+        <li>His <a href="https://github.com/rasbt/mini-coding-agent" target="_blank" rel="noopener">mini-coding-agent</a>: a from-scratch Python implementation of all six components in &lt;1&nbsp;000 lines. The single best thing you can do after reading the article.</li>
+    </ul>
+
+    <h3>Production harness sources to study</h3>
+    <ul>
+        <li><strong>Aider</strong> (<a href="https://github.com/Aider-AI/aider" target="_blank" rel="noopener">github.com/Aider-AI/aider</a>) &mdash; Paul Gauthier&rsquo;s repo-map approach, search-replace edits. A different bet on Component 1.</li>
+        <li><strong>Goose</strong> (<a href="https://github.com/block/goose" target="_blank" rel="noopener">github.com/block/goose</a>) &mdash; Block&rsquo;s open agent. Inspectable example of MCP-driven tool use (Component 3).</li>
+        <li><strong>Continue</strong> (<a href="https://github.com/continuedev/continue" target="_blank" rel="noopener">github.com/continuedev/continue</a>) &mdash; IDE-embedded agent with explicit context-source plugins.</li>
+        <li><strong>OpenHands</strong> (<a href="https://github.com/All-Hands-AI/OpenHands" target="_blank" rel="noopener">github.com/All-Hands-AI/OpenHands</a>) &mdash; sandbox-first design; useful study of Component 6 boundaries.</li>
+    </ul>
+
+    <h3>Adjacent essays and papers</h3>
+    <ul>
+        <li>Anthropic, <em>&ldquo;<a href="https://www.anthropic.com/engineering/built-multi-agent-research-system" target="_blank" rel="noopener">How we built our multi-agent research system</a>&rdquo;</em> &mdash; subagent design in production.</li>
+        <li>Anthropic, <em>&ldquo;<a href="https://www.anthropic.com/engineering/claude-code-best-practices" target="_blank" rel="noopener">Claude Code best practices</a>&rdquo;</em> &mdash; the harness vendor on context discipline and CLAUDE.md.</li>
+        <li>The &ldquo;lost-in-the-middle&rdquo; literature on long-context attention degradation, motivating Component 4.</li>
+        <li>The Anthropic prompt-caching documentation &mdash; the actual price multipliers used in deck 04.</li>
+    </ul>
+
+    <h3>Where to go from here in this hub</h3>
+    <ul>
+        <li><a href="https://brendanjameslynskey.github.io/CodingAgents_01_Repo_Understanding/">CodingAgents 01 &mdash; Repo Understanding</a> &mdash; deep dive on Component 1 retrieval mechanics (ripgrep, tree-sitter, ctags, embeddings).</li>
+        <li><a href="https://brendanjameslynskey.github.io/CodingAgents_02_Edit_Strategies/">CodingAgents 02 &mdash; Edit Strategies</a> &mdash; what happens once context is loaded: search-replace, unified diff, multi-file atomicity.</li>
+        <li><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Agents">Agents &amp; Orchestration sub-hub</a> &mdash; broader agent patterns, including LangGraph, CrewAI, AutoGen, OpenAI Agents.</li>
+        <li><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_MCP">Model Context Protocol sub-hub</a> &mdash; how tools are getting standardised across harnesses.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">A closing prompt</div>
+        <p>Pick <em>one</em> component you&rsquo;ve been least intentional about in your own work. Spend an afternoon making it explicit &mdash; write a CLAUDE.md, profile your prompt, design a tool schema, write a clipping function. Watch what happens to the agent&rsquo;s behaviour. The components are not abstractions; they are the levers that move the system. Pick one and pull it.</p>
+    </div>
+
+    <p style="text-align: center; margin-top: 2rem;">
+        <a class="ref-link" href="https://brendanjameslynskey.github.io/CodingAgents_03_Raschka_Components_Overview/">Back to Deck 03 &mdash; Components Overview</a>
+    </p>
+</section>
+
+<footer class="footer">
+    <p>Companion to <a href="https://magazine.sebastianraschka.com/p/components-of-a-coding-agent" target="_blank" rel="noopener">Sebastian Raschka, &ldquo;Components of a Coding Agent&rdquo;</a> &mdash; Component 6 &amp; synthesis</p>
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Coding_Agents">Coding Agents Internals Series</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Coding_Agents">Back to Series Index</a></p>
+</footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+
+    // -------- Subagent tree visualiser --------
+    const treeGroup = document.getElementById('treeGroup');
+    const treeDetail = document.getElementById('treeDetail');
+
+    function nodeRect(x, y, w, h, lbl, sub, cls) {
+        return '<rect class="tnode ' + cls + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="6"/>'
+             + '<text class="tlbl" x="' + (x + w/2) + '" y="' + (y + 22) + '" text-anchor="middle">' + lbl + '</text>'
+             + '<text class="tsub" x="' + (x + w/2) + '" y="' + (y + 42) + '" text-anchor="middle">' + sub + '</text>';
+    }
+    function arrow(x1, y1, x2, y2) {
+        return '<line class="tarr" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>';
+    }
+
+    const trees = {
+        A: {
+            svg: () => {
+                let s = nodeRect(280, 30, 160, 60, 'parent', 'turn 14 of 60', 'par');
+                s += nodeRect(280, 160, 160, 60, 'research', 'read-only · 8 turns', 'ch');
+                s += arrow(360, 90, 360, 160);
+                s += '<text class="tsub" x="370" y="130" text-anchor="start">spawn (bind)</text>';
+                s += '<text class="tsub" x="500" y="130" text-anchor="start" fill="#ffa657">summary back</text>';
+                return s;
+            },
+            detail: '<strong>Pattern A &mdash; research</strong>. One read-only child resolves a side question. Bind: <em>workspace summary, important_files hint, no write tools, 8-turn budget</em>. Returns a 200-token summary; parent context grows by one short message rather than 4 000 tokens of raw file content. Cheap, parallel-safe, the most-used pattern.'
+        },
+        B: {
+            svg: () => {
+                let s = nodeRect(280, 30, 160, 60, 'parent', 'integrator', 'par');
+                s += nodeRect(80,  170, 140, 60, 'edit src/a.py', 'write scoped to a.py', 'ch');
+                s += nodeRect(290, 170, 140, 60, 'edit src/b.py', 'write scoped to b.py', 'ch');
+                s += nodeRect(500, 170, 140, 60, 'edit src/c.py', 'write scoped to c.py', 'ch');
+                s += arrow(330, 90, 150, 170);
+                s += arrow(360, 90, 360, 170);
+                s += arrow(390, 90, 570, 170);
+                return s;
+            },
+            detail: '<strong>Pattern B &mdash; parallel-edit fan-out</strong>. One child per target file, each with write tools <em>scoped to that file only</em>. Parent describes the change once; children execute in parallel. Parent integrates by reviewing each child&rsquo;s returned diff.'
+        },
+        C: {
+            svg: () => {
+                let s = nodeRect(60,  30, 160, 60, 'parent', 'wrote diff', 'par');
+                s += nodeRect(280, 30, 160, 60, 'reviewer', 'read-only · structured critique', 'ch');
+                s += nodeRect(60,  170, 160, 60, 'parent (revised)', 'applied feedback', 'par');
+                s += arrow(220, 60, 280, 60);
+                s += arrow(360, 90, 220, 200);
+                s += '<text class="tsub" x="450" y="130" text-anchor="middle">findings (JSON)</text>';
+                return s;
+            },
+            detail: '<strong>Pattern C &mdash; second-opinion review</strong>. After the parent thinks the change is done, a reviewer subagent receives the diff and returns a structured critique. No write tools, fixed schema. Parent revises and may call the reviewer again until clean. The lightweight version of human code review.'
+        },
+        D: {
+            svg: () => {
+                let s = nodeRect(280, 30, 160, 60, 'parent', 'orchestrator', 'par');
+                s += nodeRect(220, 160, 280, 90, 'autonomous slice', 'fresh worktree · full tools<br>30-turn budget', 'ch');
+                s += arrow(360, 90, 360, 160);
+                s += '<text class="tsub" x="370" y="130" text-anchor="start">hand off task</text>';
+                return s;
+            },
+            detail: '<strong>Pattern D &mdash; long-running autonomous slice</strong>. The parent hands off a contained task (&ldquo;migrate this module to async&rdquo;) to a child running in a fresh worktree with full tool access. The child works to completion; the parent inspects the resulting branch state. Closer to multi-process than multi-thread.'
+        },
+        E: {
+            svg: () => {
+                let s = nodeRect(280, 30, 160, 60, 'parent (planner)', 'reasoning model', 'par');
+                s += nodeRect(80,  170, 140, 60, 'executor 1', 'fast model · step 1', 'ch');
+                s += nodeRect(290, 170, 140, 60, 'executor 2', 'fast model · step 2', 'ch');
+                s += nodeRect(500, 170, 140, 60, 'executor 3', 'fast model · step 3', 'ch');
+                s += arrow(330, 90, 150, 170);
+                s += arrow(360, 90, 360, 170);
+                s += arrow(390, 90, 570, 170);
+                return s;
+            },
+            detail: '<strong>Pattern E &mdash; planner / executor split</strong>. A reasoning-model parent produces a step-by-step plan. Cheaper, faster non-reasoning children execute each step. Tiered cost structure: thinking tokens spent only on planning; execution tokens at a different price tier. Increasingly common pattern as reasoning-model APIs differentiate from fast-output APIs.'
+        },
+    };
+
+    function paintTree(p) {
+        treeGroup.innerHTML = trees[p].svg();
+        treeDetail.innerHTML = trees[p].detail;
+        document.querySelectorAll('[data-pat]').forEach(b => b.classList.toggle('active', b.dataset.pat === p));
+    }
+    document.querySelectorAll('[data-pat]').forEach(b => b.addEventListener('click', () => paintTree(b.dataset.pat)));
+    paintTree('A');
+</script>
+</body>
+</html>
