@@ -467,7 +467,7 @@
                 <tr>
                     <td>Concurrency model</td>
                     <td>Designed for parallel spawn (multiple agents at once)</td>
-                    <td>Typically serial &mdash; one subagent at a time</td>
+                    <td>Parallel when asked &mdash; Codex spawns subagents in parallel and collects their results in one response; open threads are capped by <code>agents.max_concurrent_threads_per_session</code>. <em>(Corrected: this slide first said &ldquo;typically serial&rdquo;.)</em></td>
                 </tr>
                 <tr>
                     <td>Configuration surface</td>
@@ -477,6 +477,7 @@
             </tbody>
         </table>
     </div>
+    <p style="font-size:.8rem;color:var(--text-secondary);">Codex concurrency per the <a href="https://developers.openai.com/codex/subagents">Codex subagents documentation</a> (accessed 2026-10-08); subagents are enabled by default in current releases and spawn when you ask (or when project or skill instructions request it), and they inherit the parent's sandbox policy. Tool behaviour changes quickly; check the docs.</p>
 
     <div class="diagram-grid cols-2">
         <div class="diagram-panel accent-border">
